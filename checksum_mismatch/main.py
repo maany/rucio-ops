@@ -1,28 +1,23 @@
 import logging 
 import logging
 import colorlog
-from agent import Agent
+import pyperclip
+from agent import RucioWebUIAgent
 
 from utils import load_csv
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
 def main():
-    logger.info("Hello, world!")
     df = load_csv("transfer_details_23_feb_csv.csv")
     # list all columns in the DataFrame
     logger.debug(df.columns)
     # list unique values in Destination RSE column
-    
     unique_dest_rses = df["Destination RSE"].unique()
     logger.debug(f"Unique Destination RSEs: {unique_dest_rses}")
-
     # count the number of transfers for each destination RSE
     dest_rse_counts = df["Destination RSE"].value_counts()
-    
-    # show first 100 entries, show only Scope, Name, Timestamp, Duration, Bytes, FTS Link, Source URL, Destination RSE, Destination URL fields
-    logger.debug(df[["Scope", "Name", "Timestamp", "Duration", "Bytes", "FTS Link", "Source URL", "Destination RSE", "Destination URL"]].head(100))
-    logger.info(f"Destination RSE and Number of Transfers: {dest_rse_counts}")
 
     # show average File Size, max File Size, and min File Size, median File Size
     file_size_gb = df['File size'] / 1073741824
@@ -41,7 +36,7 @@ def main():
     logger.info("Entries with Min File Size:")
     logger.info(min_file_size_entries[['Scope', 'Name']])
     
-    logger.warning("\n===================== FTS URLS ===================")
+    logger.warning("\n===================== Starting Scraping ===================")
     # Scope Scope:Name, FTS Link, Source URL, Destination URL for first 10 entries
     df['did'] = df[['Scope', 'Name']].agg(':'.join, axis=1)
     df['temp'] = df[['Scope','Name']].agg('&name='.join, axis=1).astype(str)
@@ -52,9 +47,29 @@ def main():
 
     #save df to a new csv file
     df.to_csv("transfer_details_23_feb_csv_with_did.csv")
+    pyperclip.paste()
 
+    # print total number of transfers
+    logger.info(f"Total number of transfers: {len(df)}")
 
-    agent = Agent()
+    agent = RucioWebUIAgent()
+    df_webui = df[['did', 'webui_link']]
+    # df_webui = df_webui.drop_duplicates(subset=['did'])
+   
+    for index, row in tqdm(df_webui.iterrows(), total=len(df_webui), desc="Progress"):
+        if index > 2:
+            break
+        # Access each item in the row
+        did = row['did']
+        webui_link = row['webui_link']
+        
+        # Perform operations on the items
+        logger.info(f"URL for {did}: {webui_link}")
+        checksum = agent.execute(webui_link)
+        logger.warning(f"Checksum for {did}: {checksum}")
+        df.at[index, 'webui_checksum'] = checksum
+    
+    df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum.csv")
 
 if __name__ == '__main__':
     formatter = colorlog.ColoredFormatter(
