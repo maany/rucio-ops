@@ -3,7 +3,7 @@ import logging
 import colorlog
 import pyperclip
 from agent import RucioWebUIAgent
-
+import time
 from utils import load_csv
 from tqdm import tqdm
 
@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 def main():
     df = load_csv("transfer_details_23_feb_csv.csv")
+    # drop duplicates
+    df = df.drop_duplicates(subset=['Name'])
+
     # list all columns in the DataFrame
     logger.debug(df.columns)
     # list unique values in Destination RSE column
@@ -46,7 +49,7 @@ def main():
     logger.info(did_table.head(10))
 
     #save df to a new csv file
-    df.to_csv("transfer_details_23_feb_csv_with_did.csv")
+    df.to_csv("transfer_details_23_feb_csv_with_did_unique.csv")
     pyperclip.paste()
 
     # print total number of transfers
@@ -54,9 +57,15 @@ def main():
 
     agent = RucioWebUIAgent()
     df_webui = df[['did', 'webui_link']]
-    # df_webui = df_webui.drop_duplicates(subset=['did'])
-   
-    for index, row in tqdm(df_webui.iterrows(), total=len(df_webui), desc="Progress"):
+    df = execute_agent(agent, df, df_webui)
+    df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_unique.csv")
+
+    df_fts = df[['did', 'FTS Link']]
+
+def execute_agent(agent, df, df_clipped):
+    total_time = 0.0
+    for index, row in tqdm(df_clipped.iterrows(), total=len(df_clipped), desc="Progress"):
+        start = time.time()
         if index > 2:
             break
         # Access each item in the row
@@ -68,8 +77,18 @@ def main():
         checksum = agent.execute(webui_link)
         logger.warning(f"Checksum for {did}: {checksum}")
         df.at[index, 'webui_checksum'] = checksum
-    
-    df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum.csv")
+        end = time.time()
+        
+        # Calculate time taken for each transfer
+        time_per_transfer = end - start
+        total_time += time_per_transfer
+        average_time = total_time / (index + 1)
+        transfers_remaining = len(df_clipped) - index
+        time_remaining = transfers_remaining * average_time
+        time_remaining_mins = round(time_remaining / 60)
+        logger.warn(f"Time remaining: {time_remaining_mins} minutes")
+    return df
+
 
 if __name__ == '__main__':
     formatter = colorlog.ColoredFormatter(
