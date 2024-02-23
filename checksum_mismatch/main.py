@@ -55,30 +55,29 @@ def main():
     # print total number of transfers
     logger.info(f"Total number of transfers: {len(df)}")
 
-    # agent = RucioWebUIAgent()
-    # df_webui = df[['did', 'webui_link']]
-    # df = execute_agent(agent, df, df_webui, 'webui_link')
-    # df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_unique.csv")
-
     fts_agent = FTSLogScrapingAgent()
     df_fts = df[['did', 'FTS Link']]
     df = execute_agent(fts_agent, df, df_fts, 'FTS Link', log_output=False)
     df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_and_fts_unique.csv")
 
+    # agent = RucioWebUIAgent()
+    # df_webui = df[['did', 'webui_link']]
+    # df = execute_agent(agent, df, df_webui, 'webui_link')
+    # df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_unique.csv")
 
 def execute_agent(agent, df, df_clipped, url_field, log_output=True):
     total_time = 0.0
     for index, row in tqdm(df_clipped.iterrows(), total=len(df_clipped), desc="Progress"):
+        # if index > 2:
+        #     break
         start = time.time()
-        if index > 2:
-            break
         # Access each item in the row
         did = row['did']
         link = row[url_field]
         
         # Perform operations on the items
         logger.info(f"URL for {did}: {link}")
-        output = agent.execute(link)
+        output = agent.execute(link, row)
         if log_output:
             logger.warning(f"output for {did}: {output}")
         df.at[index, 'output'] = output

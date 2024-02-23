@@ -18,15 +18,15 @@ class BaseAgent:
         pyautogui.press('enter')
         time.sleep(1)
     
-    def webPageActions(self):
+    def webPageActions(self, row):
         pass
     
     def postProcess(self, output):
         pass
 
-    def execute(self, address):
+    def execute(self, address, row):
         self.loadWebPage(address)
-        self.webPageActions()
+        self.webPageActions(row)
         data = pyperclip.paste()
         data = self.postProcess(data)
         return data
@@ -37,7 +37,7 @@ class RucioWebUIAgent(BaseAgent):
     def __init__(self) -> None:
        super().__init__()
 
-    def webPageActions(self):
+    def webPageActions(self, row):
         pyautogui.rightClick(764, 315)
         pyautogui.click(787, 355)
         time.sleep(1)
@@ -50,7 +50,8 @@ class FTSLogScrapingAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__()
 
-    def webPageActions(self):
+    def webPageActions(self, row):
+        did = row['did']
         pyautogui.click(1311, 855)
         time.sleep(1)
         # x509 certificate
@@ -64,6 +65,7 @@ class FTSLogScrapingAgent(BaseAgent):
         pyautogui.click(979, 471)
         time.sleep(1)
         # save
+        pyautogui.write(f"{did}")
         pyautogui.keyDown(key='enter')
         pyautogui.click(775, 578)
     def postProcess(self, output):
