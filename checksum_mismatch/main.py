@@ -1,6 +1,7 @@
 import logging 
 import logging
 import colorlog
+from agent import Agent
 
 from utils import load_csv
 
@@ -51,6 +52,9 @@ def main():
 
     #save df to a new csv file
     df.to_csv("transfer_details_23_feb_csv_with_did.csv")
+
+
+    agent = Agent()
 
 if __name__ == '__main__':
     formatter = colorlog.ColoredFormatter(
