@@ -2,7 +2,7 @@ import logging
 import logging
 import colorlog
 import pyperclip
-from agent import RucioWebUIAgent
+from agent import FTSLogScrapingAgent, RucioWebUIAgent
 import time
 from utils import load_csv
 from tqdm import tqdm
@@ -55,14 +55,18 @@ def main():
     # print total number of transfers
     logger.info(f"Total number of transfers: {len(df)}")
 
-    agent = RucioWebUIAgent()
-    df_webui = df[['did', 'webui_link']]
-    df = execute_agent(agent, df, df_webui)
-    df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_unique.csv")
+    # agent = RucioWebUIAgent()
+    # df_webui = df[['did', 'webui_link']]
+    # df = execute_agent(agent, df, df_webui, 'webui_link')
+    # df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_unique.csv")
 
+    fts_agent = FTSLogScrapingAgent()
     df_fts = df[['did', 'FTS Link']]
+    df = execute_agent(fts_agent, df, df_fts, 'FTS Link', log_output=False)
+    df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_and_fts_unique.csv")
 
-def execute_agent(agent, df, df_clipped):
+
+def execute_agent(agent, df, df_clipped, url_field, log_output=True):
     total_time = 0.0
     for index, row in tqdm(df_clipped.iterrows(), total=len(df_clipped), desc="Progress"):
         start = time.time()
@@ -70,13 +74,14 @@ def execute_agent(agent, df, df_clipped):
             break
         # Access each item in the row
         did = row['did']
-        webui_link = row['webui_link']
+        link = row[url_field]
         
         # Perform operations on the items
-        logger.info(f"URL for {did}: {webui_link}")
-        checksum = agent.execute(webui_link)
-        logger.warning(f"Checksum for {did}: {checksum}")
-        df.at[index, 'webui_checksum'] = checksum
+        logger.info(f"URL for {did}: {link}")
+        output = agent.execute(link)
+        if log_output:
+            logger.warning(f"output for {did}: {output}")
+        df.at[index, 'output'] = output
         end = time.time()
         
         # Calculate time taken for each transfer
@@ -86,7 +91,7 @@ def execute_agent(agent, df, df_clipped):
         transfers_remaining = len(df_clipped) - index
         time_remaining = transfers_remaining * average_time
         time_remaining_mins = round(time_remaining / 60)
-        logger.warn(f"Time remaining: {time_remaining_mins} minutes")
+        logger.warning(f"Time remaining: {time_remaining_mins} minutes")
     return df
 
 

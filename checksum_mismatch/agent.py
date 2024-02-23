@@ -9,6 +9,7 @@ class BaseAgent:
         print(pyautogui.size())
         currentMouseX, currentMouseY = pyautogui.position()
         print("BaseAgent initialized")
+        print(f"Current mouse position: {currentMouseX}, {currentMouseY}")
         
     def loadWebPage(self, address):
         pyautogui.click(201, 66)
@@ -19,11 +20,15 @@ class BaseAgent:
     
     def webPageActions(self):
         pass
+    
+    def postProcess(self, output):
+        pass
 
     def execute(self, address):
         self.loadWebPage(address)
         self.webPageActions()
         data = pyperclip.paste()
+        data = self.postProcess(data)
         return data
 
 class RucioWebUIAgent(BaseAgent):
@@ -39,11 +44,27 @@ class RucioWebUIAgent(BaseAgent):
         checksum = pyperclip.paste()
         return checksum
 
-class FTSLogScrapingAgent:
+class FTSLogScrapingAgent(BaseAgent):
     """Scrapes FTS logs for transfer details
     """
     def __init__(self) -> None:
-        pass
+        super().__init__()
 
-    def execute(self, address):
-        pass
+    def webPageActions(self):
+        pyautogui.click(1311, 855)
+        time.sleep(1)
+        # x509 certificate
+        pyautogui.click(934, 354)
+        time.sleep(1)
+        # select all
+        pyautogui.hotkey('win', 'a')
+        # right click
+        pyautogui.rightClick(934, 354)
+        # save as
+        pyautogui.click(979, 471)
+        time.sleep(1)
+        # save
+        pyautogui.keyDown(key='enter')
+        pyautogui.click(775, 578)
+    def postProcess(self, output):
+        print(output)
