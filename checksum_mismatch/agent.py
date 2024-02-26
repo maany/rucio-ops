@@ -52,13 +52,19 @@ class FTSLogScrapingAgent(BaseAgent):
 
     def webPageActions(self, row):
         did = row['did']
+        # new tab
+        # pyautogui.click(1336, 25)
+        # time.sleep(1)
         pyautogui.click(1311, 855)
         time.sleep(1)
+        
         # x509 certificate
         pyautogui.click(934, 354)
         time.sleep(1)
+        
         # select all
-        pyautogui.hotkey('win', 'a')
+        # pyautogui.hotkey('win', 'a')
+        
         # right click
         pyautogui.rightClick(934, 354)
         # save as
@@ -67,6 +73,8 @@ class FTSLogScrapingAgent(BaseAgent):
         # save
         pyautogui.write(f"{did}")
         pyautogui.keyDown(key='enter')
-        pyautogui.click(775, 578)
+        pyautogui.doubleClick(775, 578)
+        time.sleep(2)
+
     def postProcess(self, output):
         print(output)

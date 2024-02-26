@@ -6,8 +6,9 @@ from agent import FTSLogScrapingAgent, RucioWebUIAgent
 import time
 from utils import load_csv
 from tqdm import tqdm
-
+import os
 logger = logging.getLogger(__name__)
+import pandas as pd
 
 def main():
     df = load_csv("transfer_details_23_feb_csv.csv")
@@ -39,37 +40,48 @@ def main():
     logger.info("Entries with Min File Size:")
     logger.info(min_file_size_entries[['Scope', 'Name']])
     
-    logger.warning("\n===================== Starting Scraping ===================")
-    # Scope Scope:Name, FTS Link, Source URL, Destination URL for first 10 entries
-    df['did'] = df[['Scope', 'Name']].agg(':'.join, axis=1)
-    df['temp'] = df[['Scope','Name']].agg('&name='.join, axis=1).astype(str)
-    df['webui_link'] = "https://rucio-ui.cern.ch/did?scope=" + df['temp']
+    # logger.warning("\n===================== Starting Scraping ===================")
+    # # Scope Scope:Name, FTS Link, Source URL, Destination URL for first 10 entries
+    # df['did'] = df[['Scope', 'Name']].agg(':'.join, axis=1)
+    # df['temp'] = df[['Scope','Name']].agg('&name='.join, axis=1).astype(str)
+    # df['webui_link'] = "https://rucio-ui.cern.ch/did?scope=" + df['temp']
 
-    did_table = df[['did', 'FTS Link', 'webui_link', 'Destination RSE']]
-    logger.info(did_table.head(10))
+    # did_table = df[['did', 'FTS Link', 'webui_link', 'Destination RSE']]
+    # logger.info(did_table.head(10))
 
-    #save df to a new csv file
-    df.to_csv("transfer_details_23_feb_csv_with_did_unique.csv")
-    pyperclip.paste()
+    # #save df to a new csv file
+    # df.to_csv("transfer_details_23_feb_csv_with_did_unique.csv")
+    # pyperclip.paste()
 
-    # print total number of transfers
-    logger.info(f"Total number of transfers: {len(df)}")
+    # # print total number of transfers
+    # logger.info(f"Total number of transfers: {len(df)}")
 
-    fts_agent = FTSLogScrapingAgent()
-    df_fts = df[['did', 'FTS Link']]
-    df = execute_agent(fts_agent, df, df_fts, 'FTS Link', log_output=False)
-    df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_and_fts_unique.csv")
+    # fts_agent = FTSLogScrapingAgent()
+    # df_fts = df[['did', 'FTS Link']]
+    # df = execute_agent(fts_agent, df, df_fts, 'FTS Link', log_output=False)
+    # df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_and_fts_unique.csv")
 
     # agent = RucioWebUIAgent()
     # df_webui = df[['did', 'webui_link']]
     # df = execute_agent(agent, df, df_webui, 'webui_link')
     # df.to_csv("transfer_details_23_feb_csv_with_did_and_checksum_unique.csv")
 
+    dids_to_filter_for =   extract_files("/Users/maany/Downloads/final")
+    list_of_names = [x['Name'] for x in dids_to_filter_for]
+    list_of_scopes = [x['Scope'] for x in dids_to_filter_for]
+    df_filtered = df[df['Scope'].isin(list_of_scopes)]
+    df_filtered = df_filtered[df_filtered['Name'].isin(list_of_names)] 
+    # add rucio checksum and destination checksum to the df
+    df_filtered = df_filtered.merge(pd.DataFrame(dids_to_filter_for), on='Name', how='left')
+    df_final = df_filtered[['Timestamp', 'Scope_x', 'Name', 'Source RSE', 'Destination URL', 'Rucio_Checksum', 'Destination_Checksum']]
+    df_final.to_csv("transfer_details_23_feb_csv_needs_seal_checksum.csv")
+    logger.info(df_final)
+
+
+
 def execute_agent(agent, df, df_clipped, url_field, log_output=True):
     total_time = 0.0
     for index, row in tqdm(df_clipped.iterrows(), total=len(df_clipped), desc="Progress"):
-        # if index > 2:
-        #     break
         start = time.time()
         # Access each item in the row
         did = row['did']
@@ -94,6 +106,46 @@ def execute_agent(agent, df, df_clipped, url_field, log_output=True):
     return df
 
 
+def extract_checksums_from_last_line(file):
+    """Extract the checksums from the last line of the file if it contains "DESTINATION CHECKSUM MISMATCH".
+
+    Args:
+        file (str): The file to extract checksums from.
+
+    Returns:
+        (str, str): The adler32 and md5 checksums if found, otherwise None.
+    """
+    with open(file, 'r') as f:
+        lines = f.readlines()
+        last_line = lines[-1].strip()
+        if "DESTINATION CHECKSUM MISMATCH" in last_line:
+            start_index = last_line.find("(") + 1
+            end_index = last_line.find(")")
+            checksums = last_line[start_index:end_index].split(" != ")
+            if len(checksums) == 2:
+                return checksums[0], checksums[1]
+    return None
+
+def extract_files(location):
+    """Extract all txt files from a given location. The file name is the DID.
+    Returns the list of file names.
+
+    Args:
+        location (str): The location to extract files from.
+    """
+    file_names = []
+    for file in os.listdir(location):
+        if file.endswith(".txt"):
+            file_name = os.path.splitext(file)[0]
+            scope = file_name.split("-")[0]
+            did = "".join(file_name.split("-")[1:])
+            checksums = extract_checksums_from_last_line(os.path.join(location, file))
+            if(checksums is not None):
+                Rucio_Checksum, Destination_Checksum = checksums
+                file_names.append({"Name": did, "Scope": scope, "Rucio_Checksum": Rucio_Checksum, "Destination_Checksum": Destination_Checksum})
+            
+    return file_names
+
 if __name__ == '__main__':
     formatter = colorlog.ColoredFormatter(
         "%(log_color)s%(message)s%(reset)s",
@@ -111,5 +163,9 @@ if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
 
     main()
+    # checksums = extract_checksums_from_last_line("/Users/maany/Downloads/final/mc16_13TeV-AOD.14795494._007439.pool.root.1.txt")
+    # logger.info(checksums)
+    # file_names = extract_files("/Users/maany/Downloads/final")
+    # logger.info(file_names)
 
 
