@@ -73,7 +73,7 @@ def main():
     df_filtered = df_filtered[df_filtered['Name'].isin(list_of_names)] 
     # add rucio checksum and destination checksum to the df
     df_filtered = df_filtered.merge(pd.DataFrame(dids_to_filter_for), on='Name', how='left')
-    df_final = df_filtered[['Timestamp', 'Scope_x', 'Name', 'Source RSE', 'Destination URL', 'Rucio_Checksum', 'Destination_Checksum']]
+    df_final = df_filtered[['Timestamp', 'Scope_x', 'Name', 'Destination RSE', 'Destination URL', 'Rucio_Checksum', 'Destination_Checksum']]
     df_final.to_csv("transfer_details_23_feb_csv_needs_seal_checksum.csv")
     logger.info(df_final)
 
