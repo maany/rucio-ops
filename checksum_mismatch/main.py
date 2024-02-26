@@ -9,6 +9,7 @@ from tqdm import tqdm
 import os
 logger = logging.getLogger(__name__)
 import pandas as pd
+import random
 
 def main():
     df = load_csv("transfer_details_23_feb_csv.csv")
@@ -42,9 +43,9 @@ def main():
     
     # logger.warning("\n===================== Starting Scraping ===================")
     # # Scope Scope:Name, FTS Link, Source URL, Destination URL for first 10 entries
-    # df['did'] = df[['Scope', 'Name']].agg(':'.join, axis=1)
-    # df['temp'] = df[['Scope','Name']].agg('&name='.join, axis=1).astype(str)
-    # df['webui_link'] = "https://rucio-ui.cern.ch/did?scope=" + df['temp']
+    df['did'] = df[['Scope', 'Name']].agg(':'.join, axis=1)
+    df['temp'] = df[['Scope','Name']].agg('&name='.join, axis=1).astype(str)
+    df['webui_link'] = "https://rucio-ui.cern.ch/did?scope=" + df['temp']
 
     # did_table = df[['did', 'FTS Link', 'webui_link', 'Destination RSE']]
     # logger.info(did_table.head(10))
@@ -73,12 +74,28 @@ def main():
     df_filtered = df_filtered[df_filtered['Name'].isin(list_of_names)] 
     # add rucio checksum and destination checksum to the df
     df_filtered = df_filtered.merge(pd.DataFrame(dids_to_filter_for), on='Name', how='left')
-    df_final = df_filtered[['Timestamp', 'Scope_x', 'Name', 'Destination RSE', 'Destination URL', 'Rucio_Checksum', 'Destination_Checksum']]
-    df_final.to_csv("transfer_details_23_feb_csv_needs_seal_checksum.csv")
+    df_final = df_filtered[['Timestamp', 'Scope_x', 'Name', 'Source URL', 'Destination RSE', 'Destination URL', 'Rucio_Checksum', 'Destination_Checksum', 'webui_link']]
+    df_final.to_csv("transfer_details_23_feb_csv_needs_seal_checksum_webui.csv")
     logger.info(df_final)
 
+    # string_of_scopes = ','.join([f"'{x}'" for x in set(list_of_scopes)])
+    # string_of_names = ','.join([f"'{x}'" for x in set(list_of_names)])
+    # sql_query = f"FROM atlas_rucio.replicas WHERE SCOPE IN ({string_of_scopes}) AND RSE_ID <> 'D22A0465C92D448394B8CAA7F06F38F9' LIMIT 100; "
+    # logger.info(sql_query)
 
+    replicas_df = pd.read_csv("replicas.csv")
+    replicas_df = replicas_df[~replicas_df['RSE'].str.contains('TAPE')]
+    grouped_df = replicas_df.groupby(['SCOPE', 'NAME'])['RSE'].apply(list).reset_index(name='RSE_List')
+    logger.info(grouped_df)
 
+    df_merged = df_final.merge(grouped_df, left_on=['Scope_x', 'Name'], right_on=['SCOPE', 'NAME'], how='inner') 
+    logger.info(df_merged)
+    df_merged_final  = df_merged[['Timestamp', 'Scope_x', 'Name', 'Source URL', 'Destination RSE', 'Destination URL', 'Rucio_Checksum', 'Destination_Checksum', 'webui_link', 'RSE_List']]
+
+    df_merged_final['RSE_List'] = df_merged_final['RSE_List'].apply(lambda x: random.choice(x) if isinstance(x, list) else x)
+   
+    logger.info(df_merged_final)
+    # df_merged_final.to_csv("transfer_details_23_feb_csv_with_rse.csv")
 def execute_agent(agent, df, df_clipped, url_field, log_output=True):
     total_time = 0.0
     for index, row in tqdm(df_clipped.iterrows(), total=len(df_clipped), desc="Progress"):
