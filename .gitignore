@@ -80,3 +80,6 @@ ENV/
 
 # Flask-Migrate
 migrations/
+
+
+rucio/certs

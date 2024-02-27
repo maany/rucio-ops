@@ -95,7 +95,9 @@ def main():
     df_merged_final['RSE_List'] = df_merged_final['RSE_List'].apply(lambda x: random.choice(x) if isinstance(x, list) else x)
    
     logger.info(df_merged_final)
-    # df_merged_final.to_csv("transfer_details_23_feb_csv_with_rse.csv")
+    df_merged_final.to_csv("transfer_details_23_feb_csv_with_rse.csv")
+
+    
 def execute_agent(agent, df, df_clipped, url_field, log_output=True):
     total_time = 0.0
     for index, row in tqdm(df_clipped.iterrows(), total=len(df_clipped), desc="Progress"):
