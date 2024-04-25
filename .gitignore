@@ -82,4 +82,6 @@ ENV/
 migrations/
 
 
-rucio/certs
+rucio/*
+
+consistency_checks/data/*
