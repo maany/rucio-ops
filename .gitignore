@@ -85,3 +85,5 @@ migrations/
 rucio/*
 
 consistency_checks/data/*
+
+.DS_Store
