@@ -49,5 +49,5 @@ if __name__ == '__main__':
     s3_client = S3Client()
     print(s3_client.list_objects('rucio_dev'))
 
-    s3_client.download_file('rucio_dev', 'reporting/manifest/20220101-20220801/entries.csv', 'consistency_checks/data/seal/entries.csv')
-    s3_client.download_file('rucio_dev', 'reporting/manifest/20220101-20220801/errors.csv', 'consistency_checks/data/seal/errors.csv')
+    s3_client.download_file('rucio_dev', 'reporting/manifest/20220801-20230101/entries.csv', 'consistency_checks/data/seal/entries.csv')
+    s3_client.download_file('rucio_dev', 'reporting/manifest/20220801-20230101/errors.csv', 'consistency_checks/data/seal/errors.csv')
